@@ -1,0 +1,178 @@
+<tool id="rgTF" name="Docker Tool Factory" version="0.1.2">
+  <description>Makes scripts into tools using Docker</description>
+  <macros>
+    <import>macros.xml</import>
+  </macros>
+   <requirements>
+      <requirement type="package" version="9.10">ghostscript</requirement>
+      <requirement type="package" version="1.3.18">graphicsmagick</requirement>
+      <requirement type="package" version="0.4.0">docker-py</requirement>
+  </requirements>
+  <command interpreter="python">
+    DockerToolFactory.py --script_path "$runme" --interpreter "$interpreter" 
+     --tool_name "$tool_name"  --user_email "$__user_email__"
+    #if $generate_simple_output.make_TAB=="yes":
+       --output_tab "$tab_file"
+    #end if
+    #if $makeMode.make_Tool=="yes":
+      #if generate_simple_output.make_TAB=="yes":
+        --output_format "$out_format"
+      #end if 
+      --make_Tool "$makeMode.make_Tool"
+      --tool_desc "$makeMode.tool_desc"
+      --tool_version "$makeMode.tool_version"
+      --new_tool "$new_tool"
+      --help_text "$helpme"
+      #if $make_HTML.value=="yes":
+      --include_dependencies "${makeMode.include_deps}"
+      #end if
+    #end if
+    #if $make_HTML.value=="yes":
+      --output_dir "$html_file.files_path" --output_html "$html_file" --make_HTML "yes"
+    #else:
+       --output_dir "."
+    #end if
+    #if $additional_parameters != 'None':
+      #for i in $additional_parameters:
+	--additional_parameters
+        "$i.param_name, $i.param_value"
+      #end for
+    #end if
+    #if $input_files != 'None':
+       --input_tab 
+	#for i in $input_files:
+	  $i.input
+	#end for
+        #for i in $input_files:
+          --input_format
+          #if str($i.in_format) == "None":
+            "Any"
+          #else 
+            "$i.in_format"
+          #end if
+        #end for
+    #end if
+  </command>
+<configfiles>
+<configfile name="runme">$dynScript</configfile>
+<configfile name="helpme">
+#if $makeMode.make_Tool == "yes":
+${makeMode.help_text}
+#end if
+</configfile>
+</configfiles>
+  <inputs>
+    <repeat name="input_files" title="Select input files">
+      <param name="input"  type="data"  label="Select an input file from your history" optional="true" size="120"
+         help="Most scripts will need an input - your script MUST be ready for whatever format you choose"/>
+      <param name="in_format" type="select" optional="true" multiple="true" label="Optional: Select the allowed input datatype(s) for your tool/script">
+        <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
+          <column name="value" index="0"/>
+        </options>
+    </param>
+    </repeat>
+    <repeat name="additional_parameters" title="Set additional parameters">
+      <param name="param_name" type="text" value="parameter_name" label="Choose a parameter name" size="20">
+        <sanitizer invalid_char="">
+          <valid initial="string.letters,string.digits"><add value="@_."/></valid>>
+        </sanitizer>
+      </param>
+     <param name="param_value" type="text" value="parameter_value" label="Enter a parameter value" size="50">
+       <sanitizer>
+         <valid initial="string.printable">
+         </valid>
+         <mapping initial="none"/>
+       </sanitizer>
+     </param>
+    </repeat> 
+    <param name="tool_name" type="text" value="My dynamic script"   label="New tool ID and title for outputs" size="60"
+         help="This will become the toolshed repository name so please choose thoughtfully to avoid namespace clashes with other tool writers">
+        <sanitizer invalid_char="">
+            <valid initial="string.printable"/>
+        </sanitizer>
+    </param>
+    <conditional name="makeMode">
+        <param name="make_Tool" type="select" label="Create a tar.gz file ready for local toolshed entry" help="Ready to deploy securely!" size="60">
+        <option value="yes">Generate a Galaxy ToolShed compatible toolshed.gz</option>
+        <option value="" selected="true">No. Just run the script please</option>
+        </param>
+        <when value = "yes">
+            <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
+            help="If you change your script and regenerate the 'same' tool, you should inform Galaxy (and users) by changing (bumping is traditional) this number"/>
+            <param name="tool_desc" label="Tool Description" type="text" value="" size="40" 
+             help="Supply a brief tool description for the Galaxy tool menu entry (optional - appears after the tool name)" />
+            <param name="help_text" label="Tool form documentation and help text for users" type="text" area="true" 
+             size="8x120" value="**What it Does**" 
+             help="Supply the brief user documentation to appear on the new tool form as reStructured text - http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html" >           
+                <sanitizer>
+                    <valid initial="string.printable">
+                    </valid>
+                    <mapping initial="none"/>
+                </sanitizer>
+            </param>
+            <param name="include_deps" type="select" label="Include ghostscript and graphicsmagick dependencies in generated tool" size="60"
+            help="If an HTML file is being created, including dependencies is recommended. Otherwise this setting has no effect">
+                <option value="">Rely on system ghostscript and graphicsmagick rather than include these as dependencies</option>
+                <option value="yes" selected="true">Include dependencies so target installations will always work if HTML is being generated</option>
+            </param>
+
+        </when>
+        <when value = "">
+        </when>
+    </conditional> 
+    <param name="make_HTML" type="select" label="Create an HTML report with links to all output files and thumbnail links to PDF images" size="60"
+         help="Recommended for presenting complex outputs in an accessible manner. Turn off for simple tools so they just create one output">
+        <option value="yes">Yes, arrange all outputs produced by my script as an HTML output</option>
+        <option value="" selected="true">No, no HTML output file thanks</option>
+    </param>
+    <conditional name="generate_simple_output">
+      <param name="make_TAB" type="select" label="Create a new history output alongside the HTML file specified above" 
+           help="This is useful if your script creates a single new tabular file you want to appear in the history after the tool executes">
+          <option value="yes" selected="true">My script writes to a new history output</option>
+          <option value="">I do not want a new history output file</option>
+      </param>
+      <when value="yes">
+        <param name="out_format" type="select" label="Select the datatype that your tool/script produces" help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml">
+          <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
+            <column name="value" index="0"/>
+          </options>
+        </param>
+      </when>
+      <when value="no">
+      </when>
+    </conditional>
+    <param name="interpreter" type="select" label="Select the interpreter for your code">
+        <option value="Rscript" selected="true">Rscript</option>
+        <option value="python">python</option>
+        <option value="perl">perl</option>
+        <option value="sh">sh</option>
+    </param>   
+    <param name="dynScript" label="Copy and paste the script to be executed here" type="text" value="" area="True" size="8x120"  
+      help="Script must deal with two command line parameters: Path to input tabular file path (or 'None' if none selected) and path to output tabular history file (or 'None').">
+      <sanitizer>
+         <valid initial="string.printable">
+         </valid>
+         <mapping initial="none"/>
+      </sanitizer>
+     </param>
+  </inputs>
+  <outputs>
+  <!--  <data format_source="input" name="tab_file" label="${tool_name}.${out_format}"> -->
+    <data format_source="input" name="tab_file">
+      <filter>generate_simple_output['make_TAB'] == "yes"</filter>
+        <actions>
+          <action type="format">
+                <option type="from_param" name="out_format" />
+          </action>
+        </actions>
+    </data>
+    <data format="html" name="html_file" label="${tool_name}.html">
+        <filter>make_HTML == "yes"</filter>
+    </data>
+    <data format="toolshed.gz" name="new_tool" label="${tool_name}.toolshed.gz">
+        <filter>makeMode['make_Tool'] == "yes"</filter>
+    </data>
+  </outputs>
+<expand macro="help_macro" />
+<expand macro="test_data_macro" />
+</tool>

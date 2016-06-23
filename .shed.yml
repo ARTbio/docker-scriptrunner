@@ -1,0 +1,12 @@
+# .shed.yml supporting automatic pushes.
+owner: mvdbeek
+name: docker_scriptrunner
+description: docker scriptrunner allows script execution in galaxy
+long_description: |
+  docker scriptrunner allows the execution of arbitrary scripts in a container, shielding the system
+  from malicious scripts. First read the README before installing this tools, since it may run in a
+  insecure manner.
+categories:
+  - Tool generators
+homepage_url: http://artbio.fr/
+remote_repository_url: https://github.com/mvdbeek/docker_scriptrunner/
