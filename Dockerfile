@@ -30,5 +30,5 @@ RUN bash -c "conda create -y -q -c bioconda --name default samtools==0.1.19 bcft
     conda config --add channels bioconda && \
     conda config --add channels iuc && \
     . activate default && \
-    conda install -y ncurses"
+    conda install -y ncurses biopython perl-bioperl bedtools bioconductor-deseq2 bioconductor-edger numpy scipy"
 CMD /bin/bash -c ". activate default && exec /bin/bash" 
