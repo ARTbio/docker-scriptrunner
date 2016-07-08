@@ -7,6 +7,6 @@ long_description: |
   from malicious scripts. First read the README before installing this tools, since it may run in a
   insecure manner.
 categories:
-  - Tool generators
+  - Tool Generators
 homepage_url: http://artbio.fr/
 remote_repository_url: https://github.com/mvdbeek/docker_scriptrunner/
