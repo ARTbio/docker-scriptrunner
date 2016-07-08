@@ -395,7 +395,7 @@ def change_user_id(new_id):
 
 
 def update_permissions():
-    cmd = ["/bin/chown", "-R", "galaxy:galaxy", "/home/galaxy"]
+    cmd = ["/bin/chown", "-R", "galaxy:galaxy", "/var/home/galaxy"]
     subprocess.call(cmd)
 
 def main():
@@ -437,8 +437,8 @@ def main():
       return
     change_user_id(opts.user_id)
     change_group_id(opts.group_id)
-    os.setuid(int(opts.user_id))
     os.setgid(int(opts.group_id))
+    os.setuid(int(opts.user_id))
     update_permissions()
     r = ScriptRunner(opts)
     retcode = r.run()
