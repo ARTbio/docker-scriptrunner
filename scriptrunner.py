@@ -62,7 +62,6 @@ def construct_bind(host_path, container_path=False, binds=None, ro=True):
 
 def switch_to_docker(opts):
     import docker #need local import, as container does not have docker-py
-    current_user = getpass.getuser()
     user_id = os.getuid()
     group_id = os.getgid()
     docker_client=docker.Client()
@@ -84,7 +83,6 @@ def switch_to_docker(opts):
         docker_client.pull(opts.docker_image)
     container=docker_client.create_container(
         image=opts.docker_image,
-        user=current_user,
         volumes=volumes,
         command=cmd
         )
@@ -438,7 +436,9 @@ def main():
       switch_to_docker(opts)
       return
     change_user_id(opts.user_id)
-    change_group_id(opts.user_id)
+    change_group_id(opts.group_id)
+    os.setuid(int(opts.user_id))
+    os.setgid(int(opts.group_id))
     update_permissions()
     r = ScriptRunner(opts)
     retcode = r.run()
