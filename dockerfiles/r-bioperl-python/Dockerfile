@@ -7,6 +7,7 @@ FROM mvdbeek/scriptrunner
 
 MAINTAINER Marius van den Beek, m.vandenbeek@gmail.com
 
+USER galaxy
 RUN bash -c ". activate default && \
     conda install -y ncurses biopython perl-bioperl bedtools bioconductor-deseq2 bioconductor-edger numpy scipy"
-CMD /bin/bash -c ". activate default && exec /bin/bash" 
+USER root

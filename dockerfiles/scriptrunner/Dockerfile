@@ -31,4 +31,4 @@ RUN bash -c "conda create -y -q -c bioconda --name default samtools==0.1.19 bcft
     conda config --add channels iuc && \
     . activate default && \
     conda install ghostscript"
-CMD /bin/bash -c ". activate default && exec /bin/bash" 
+USER root

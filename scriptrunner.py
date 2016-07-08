@@ -63,6 +63,8 @@ def construct_bind(host_path, container_path=False, binds=None, ro=True):
 def switch_to_docker(opts):
     import docker #need local import, as container does not have docker-py
     current_user = getpass.getuser()
+    user_id = os.getuid()
+    group_id = os.getgid()
     docker_client=docker.Client()
     toolfactory_path=abspath(sys.argv[0])
     binds=construct_bind(host_path=opts.script_path, ro=False)
@@ -76,7 +78,7 @@ def switch_to_docker(opts):
     binds=construct_bind(binds=binds, host_path=toolfactory_path)
     volumes=binds.keys()
     sys.argv=[abspath(opts.output_dir) if sys.argv[i-1]=='--output_dir' else arg for i,arg in enumerate(sys.argv)] ##inject absolute path of working_dir
-    cmd=['python', '-u']+sys.argv+['--dockerized', '1']
+    cmd=['python', '-u']+sys.argv+['--dockerized', '1', "--user_id", str(user_id), "--group_id", str(group_id)]
     image_exists = [ True for image in docker_client.images() if opts.docker_image in image['RepoTags'] ]
     if not image_exists:
         docker_client.pull(opts.docker_image)
@@ -375,6 +377,29 @@ class ScriptRunner:
         return retval
   
 
+def change_group_id(group_id):
+    """
+    To avoid issues with wrong user ids, we change the user id of the 'galaxy' user in the container
+    to the user id with which the script has been called initially.
+    """
+    old_gid = 1450  # specified in Dockerfile
+    cmd = ["/usr/sbin/groupmod", "-g", group_id , "galaxy"]
+    subprocess.call(cmd)
+
+
+def change_user_id(new_id):
+    """
+    To avoid issues with wrong user ids, we change the user id of the 'galaxy' user in the container
+    to the user id with which the script has been called initially.
+    """
+    cmd = ["/usr/sbin/usermod", "-u", new_id, "galaxy"]
+    subprocess.call(cmd)
+
+
+def update_permissions():
+    cmd = ["/bin/chown", "-R", "galaxy:galaxy", "/home/galaxy"]
+    subprocess.call(cmd)
+
 def main():
     u = """
     This is a Galaxy wrapper. It expects to be called by a special purpose tool.xml as:
@@ -396,6 +421,8 @@ def main():
     a('--make_HTML',default=None)
     a('--new_tool',default=None)
     a('--dockerized',default=0)
+    a('--group_id',default=None)
+    a('--user_id',default=None)
     a('--output_format', default='tabular')
     a('--input_format', dest='input_formats', action='append', default=[])
     a('--additional_parameters', dest='additional_parameters', action='append', default=[])
@@ -410,6 +437,9 @@ def main():
     if opts.dockerized==0:
       switch_to_docker(opts)
       return
+    change_user_id(opts.user_id)
+    change_group_id(opts.user_id)
+    update_permissions()
     r = ScriptRunner(opts)
     retcode = r.run()
     os.unlink(r.sfile)
