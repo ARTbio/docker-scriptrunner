@@ -84,31 +84,33 @@ all files have a link on the resulting HTML page::
     dev.off()
  }
 
-A slight variation taking an input tabular file from which we read the first number as nreps
+# A slight variation taking an input tabular file from which we read the first number as nreps
+# his script takes a single parameter  
+# number of replicates  
 
-# note this script takes a single parameter
-# number of replicates
-ourargs = commandArgs(TRUE)
-infname = ourargs[1]
-nreps = read.table(infname,head=F)
-nreps = unlist(nreps)[1]
-nreps = max(c(1,nreps))
-nreps = min(c(20,nreps))
-print(paste("Using nreps=",nreps))
-for (i in 1:nreps) {
-   foo = runif(100)
-   bar = rnorm(100)
-   bar = foo + 0.2*bar
-   pdf(paste("yet",i,"anotherplot.pdf",sep="_"))
-   plot(foo,bar,main=paste("Foo by Bar plot ",i),col="maroon", pch=3,cex=0.6)
-   dev.off()
-   foo = data.frame(a=runif(100),b=runif(100),c=runif(100),d=runif(100),e=runif(100),f=runif(100))
-   bar = as.matrix(foo)
-   pdf(paste("yet",i,"anotherheatmap.pdf",sep="_"))
-   heatmap(bar,main="Random Heatmap")
-   dev.off()
-}
+.. code-block:: R  
 
+  ourargs = commandArgs(TRUE)
+  infname = ourargs[1]
+  nreps = read.table(infname,head=F)
+  nreps = unlist(nreps)[1]
+  nreps = max(c(1,nreps))
+  nreps = min(c(20,nreps))
+  print(paste("Using nreps=",nreps))
+  for (i in 1:nreps) {
+     foo = runif(100)
+     bar = rnorm(100)
+     bar = foo + 0.2*bar
+     pdf(paste("yet",i,"anotherplot.pdf",sep="_"))
+     plot(foo,bar,main=paste("Foo by Bar plot ",i),col="maroon", pch=3,cex=0.6)
+     dev.off()
+     foo = data.frame(a=runif(100),b=runif(100),c=runif(100),d=runif(100),e=runif(100),f=runif(100))
+     bar = as.matrix(foo)
+     pdf(paste("yet",i,"anotherheatmap.pdf",sep="_"))
+     heatmap(bar,main="Random Heatmap")
+     dev.off()
+  }
+ 
 A Python example that reverses each row of a tabular file (you'll need to remove the leading spaces 
 for this to work if cut and pasted into the script box)::
 

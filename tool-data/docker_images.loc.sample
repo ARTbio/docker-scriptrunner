@@ -1,0 +1,3 @@
+# Place here your docker images that usrs can select in the docker scriptrunner
+mvdbeek/scriptrunner	mvdbeek/scriptrunner
+mvdbeek/scriptrunner-r-bioperl-python	mvdbeek/scriptrunner-r-bioperl-python

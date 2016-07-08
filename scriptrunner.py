@@ -1,5 +1,5 @@
 # DockerToolFactory.py
-# see https://bitbucket.org/mvdbeek/DockerToolFactory
+# see https://github.com/mvdbeek/scriptrunner
 
 import sys 
 import shutil 
@@ -16,33 +16,10 @@ import math
 import fileinput
 from os.path import abspath 
 
+
 progname = os.path.split(sys.argv[0])[1] 
-myversion = 'V001.1 March 2014' 
 verbose = False 
 debug = False
-toolFactoryURL = 'https://bitbucket.org/fubar/galaxytoolfactory'
-
-# if we do html we need these dependencies specified in a tool_dependencies.xml file and referred to in the generated
-# tool xml
-toolhtmldepskel = """<?xml version="1.0"?>
-<tool_dependency>
-    <package name="ghostscript" version="9.10">
-        <repository name="package_ghostscript_9_10" owner="devteam" prior_installation_required="True" />
-    </package>
-    <package name="graphicsmagick" version="1.3.18">
-        <repository name="package_graphicsmagick_1_3" owner="iuc" prior_installation_required="True" />
-    </package>
-        <readme>
-           %s
-       </readme>
-</tool_dependency>
-"""
-
-protorequirements = """<requirements>
-      <requirement type="package" version="9.10">ghostscript</requirement>
-      <requirement type="package" version="1.3.18">graphicsmagick</requirement>
-      <container type="docker">toolfactory/custombuild:%s</container>
-</requirements>"""
 
 def timenow():
     """return current time as a string
@@ -96,15 +73,12 @@ def switch_to_docker(opts):
         binds=construct_bind(binds=binds, host_path=opts.output_tab, ro=False)
     if opts.make_HTML:
         binds=construct_bind(binds=binds, host_path=opts.output_html, ro=False)
-    if opts.make_Tool:
-        binds=construct_bind(binds=binds, host_path=opts.new_tool, ro=False)
-        binds=construct_bind(binds=binds, host_path=opts.help_text, ro=True)
     binds=construct_bind(binds=binds, host_path=toolfactory_path)
     volumes=binds.keys()
     sys.argv=[abspath(opts.output_dir) if sys.argv[i-1]=='--output_dir' else arg for i,arg in enumerate(sys.argv)] ##inject absolute path of working_dir
     cmd=['python', '-u']+sys.argv+['--dockerized', '1']
     container=docker_client.create_container(
-        image='mvdbeek/scriptrunner',  # Make this configureable through job_conf
+        image=opts.docker_image,  # Make this configureable through job_conf
         user=current_user,  # TODO: make this configurable on the current user
         volumes=volumes,
         command=cmd
@@ -125,6 +99,7 @@ class ScriptRunner:
         
         """
         self.opts = opts
+        self.scriptname = 'script'
         self.useGM = cmd_exists('gm')
         self.useIM = cmd_exists('convert')
         self.useGS = cmd_exists('gs')
@@ -133,25 +108,19 @@ class ScriptRunner:
         self.image_tag = image_tag
         os.chdir(abspath(opts.output_dir))
         self.thumbformat = 'png'
-        self.toolname_sanitized = re.sub('[^a-zA-Z0-9_]+', '_', opts.tool_name) # a sanitizer now does this but..
-        self.toolname = opts.tool_name
-        self.toolid = self.toolname
-        self.myname = sys.argv[0] # get our name because we write ourselves out as a tool later
-        self.pyfile = self.myname # crude but efficient - the cruft won't hurt much
-        self.xmlfile = '%s.xml' % self.toolname_sanitized
         s = open(self.opts.script_path,'r').readlines()
         s = [x.rstrip() for x in s] # remove pesky dos line endings if needed
         self.script = '\n'.join(s)
-        fhandle,self.sfile = tempfile.mkstemp(prefix=self.toolname_sanitized,suffix=".%s" % (opts.interpreter))
+        fhandle,self.sfile = tempfile.mkstemp(prefix='script',suffix=".%s" % (opts.interpreter))
         tscript = open(self.sfile,'w') # use self.sfile as script source for Popen
         tscript.write(self.script)
         tscript.close()
         self.indentedScript = '\n'.join([' %s' % html_escape(x) for x in s]) # for restructured text in help
         self.escapedScript = '\n'.join([html_escape(x) for x in s])
-        self.elog = os.path.join(self.opts.output_dir,"%s_error.log" % self.toolname_sanitized)
+        self.elog = os.path.join(self.opts.output_dir,"%s_error.log" % self.scriptname)
         if opts.output_dir: # may not want these complexities
-            self.tlog = os.path.join(self.opts.output_dir,"%s_runner.log" % self.toolname_sanitized)
-            art = '%s.%s' % (self.toolname_sanitized,opts.interpreter)
+            self.tlog = os.path.join(self.opts.output_dir,"%s_runner.log" % self.scriptname)
+            art = '%s.%s' % (self.scriptname,opts.interpreter)
             artpath = os.path.join(self.opts.output_dir,art) # need full path
             artifact = open(artpath,'w') # use self.sfile as script source for Popen
             artifact.write(self.script)
@@ -167,258 +136,17 @@ class ScriptRunner:
 	for input in opts.input_tab:
 	  a(input) 
         if opts.output_tab == 'None': #If tool generates only HTML, set output name to toolname
-            a(str(self.toolname_sanitized)+'.out')
+            a(str(self.scriptname)+'.out')
         a(opts.output_tab)
 	for param in opts.additional_parameters:
           param, value=param.split(',')
           a('--'+param)
           a(value)
-        #print self.cl
         self.outFormats = opts.output_format
         self.inputFormats = [formats for formats in opts.input_formats]
-        self.test1Input = '%s_test1_input.xls' % self.toolname_sanitized
-        self.test1Output = '%s_test1_output.xls' % self.toolname_sanitized
-        self.test1HTML = '%s_test1_output.html' % self.toolname_sanitized
-
-    def makeXML(self):
-        """
-        Create a Galaxy xml tool wrapper for the new script as a string to write out
-        fixme - use templating or something less fugly than this example of what we produce
-
-        <tool id="reverse" name="reverse" version="0.01">
-            <description>a tabular file</description>
-            <command interpreter="python">
-            reverse.py --script_path "$runMe" --interpreter "python" 
-            --tool_name "reverse" --input_tab "$input1" --output_tab "$tab_file" 
-            </command>
-            <inputs>
-            <param name="input1"  type="data" format="tabular" label="Select a suitable input file from your history"/>
-
-            </inputs>
-            <outputs>
-            <data format=opts.output_format name="tab_file"/>
-
-            </outputs>
-            <help>
-            
-**What it Does**
-
-Reverse the columns in a tabular file
-
-            </help>
-            <configfiles>
-            <configfile name="runMe">
-            
-# reverse order of columns in a tabular file
-import sys
-inp = sys.argv[1]
-outp = sys.argv[2]
-i = open(inp,'r')
-o = open(outp,'w')
-for row in i:
-     rs = row.rstrip().split('\t')
-     rs.reverse()
-     o.write('\t'.join(rs))
-     o.write('\n')
-i.close()
-o.close()
- 
-
-            </configfile>
-            </configfiles>
-            </tool>
-        
-        """ 
-        newXML="""<tool id="%(toolid)s" name="%(toolname)s" version="%(tool_version)s">
-%(tooldesc)s
-%(requirements)s
-<command interpreter="python">
-%(command)s
-</command>
-<inputs>
-%(inputs)s
-</inputs>
-<outputs>
-%(outputs)s
-</outputs>
-<configfiles>
-<configfile name="runMe">
-%(script)s
-</configfile>
-</configfiles>
-
-%(tooltests)s
-
-<help>
-
-%(help)s
-
-</help>
-</tool>""" # needs a dict with toolname, toolname_sanitized, toolid, interpreter, scriptname, command, inputs as a multi line string ready to write, outputs ditto, help ditto
-
-        newCommand="""
-        %(toolname_sanitized)s.py --script_path "$runMe" --interpreter "%(interpreter)s" 
-            --tool_name "%(toolname)s" %(command_inputs)s %(command_outputs)s """
-        # may NOT be an input or htmlout - appended later
-        tooltestsTabOnly = """
-        <tests>
-        <test>
-        <param name="input1" value="%(test1Input)s" ftype="tabular"/>
-        <param name="runMe" value="$runMe"/>
-        <output name="tab_file" file="%(test1Output)s" ftype="tabular"/>
-        </test>
-        </tests>
-        """
-        tooltestsHTMLOnly = """
-        <tests>
-        <test>
-        <param name="input1" value="%(test1Input)s" ftype="tabular"/>
-        <param name="runMe" value="$runMe"/>
-        <output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="5"/>
-        </test>
-        </tests>
-        """
-        tooltestsBoth = """<tests>
-        <test>
-        <param name="input1" value="%(test1Input)s" ftype="tabular"/>
-        <param name="runMe" value="$runMe"/>
-        <output name="tab_file" file="%(test1Output)s" ftype="tabular" />
-        <output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="10"/>
-        </test>
-        </tests>
-        """
-        xdict = {}
-        #xdict['requirements'] = '' 
-        #if self.opts.make_HTML:
-        xdict['requirements'] = protorequirements % self.image_tag
-        xdict['tool_version'] = self.opts.tool_version
-        xdict['test1Input'] = self.test1Input
-        xdict['test1HTML'] = self.test1HTML
-        xdict['test1Output'] = self.test1Output   
-        if self.opts.make_HTML and self.opts.output_tab <> 'None':
-            xdict['tooltests'] = tooltestsBoth % xdict
-        elif self.opts.make_HTML:
-            xdict['tooltests'] = tooltestsHTMLOnly % xdict
-        else:
-            xdict['tooltests'] = tooltestsTabOnly % xdict
-        xdict['script'] = self.escapedScript 
-        # configfile is least painful way to embed script to avoid external dependencies
-        # but requires escaping of <, > and $ to avoid Mako parsing
-        if self.opts.help_text:
-            helptext = open(self.opts.help_text,'r').readlines()
-            helptext = [html_escape(x) for x in helptext] # must html escape here too - thanks to Marius van den Beek
-            xdict['help'] = ''.join([x for x in helptext])
-        else:
-            xdict['help'] = 'Please ask the tool author (%s) for help as none was supplied at tool generation\n' % (self.opts.user_email)
-        coda = ['**Script**','Pressing execute will run the following code over your input file and generate some outputs in your history::']
-        coda.append('\n')
-        coda.append(self.indentedScript)
-        coda.append('\n**Attribution**\nThis Galaxy tool was created by %s at %s\nusing the Galaxy Tool Factory.\n' % (self.opts.user_email,timenow()))
-        coda.append('See %s for details of that project' % (toolFactoryURL))
-        coda.append('Please cite: Creating re-usable tools from scripts: The Galaxy Tool Factory. Ross Lazarus; Antony Kaspi; Mark Ziemann; The Galaxy Team. ')
-        coda.append('Bioinformatics 2012; doi: 10.1093/bioinformatics/bts573\n')
-        xdict['help'] = '%s\n%s' % (xdict['help'],'\n'.join(coda))
-        if self.opts.tool_desc:
-            xdict['tooldesc'] = '<description>%s</description>' % self.opts.tool_desc
-        else:
-            xdict['tooldesc'] = ''
-        xdict['command_outputs'] = '' 
-        xdict['outputs'] = '' 
-        if self.opts.input_tab <> 'None':
-            xdict['command_inputs'] = '--input_tab'
-            xdict['inputs']=''
-            for i,input in enumerate(self.inputFormats):
-                xdict['inputs' ]+='<param name="input{0}"  type="data" format="{1}" label="Select a suitable input file from your history"/> \n'.format(i+1, input)
-                xdict['command_inputs'] += ' $input{0}'.format(i+1)
-        else:
-            xdict['command_inputs'] = '' # assume no input - eg a random data generator       
-            xdict['inputs'] = ''
-        # I find setting the job name not very logical. can be changed in workflows anyway. xdict['inputs'] += '<param name="job_name" type="text" label="Supply a name for the outputs to remind you what they contain" value="%s"/> \n' % self.toolname
-        xdict['toolname'] = self.toolname
-        xdict['toolname_sanitized'] = self.toolname_sanitized
-        xdict['toolid'] = self.toolid
-        xdict['interpreter'] = self.opts.interpreter
-        xdict['scriptname'] = self.sfile
-        if self.opts.make_HTML:
-            xdict['command_outputs'] += ' --output_dir "$html_file.files_path" --output_html "$html_file" --make_HTML "yes"'
-            xdict['outputs'] +=  ' <data format="html" name="html_file"/>\n'
-        else:
-            xdict['command_outputs'] += ' --output_dir "./"' 
-        #print self.opts.output_tab
-        if self.opts.output_tab!="None":
-            xdict['command_outputs'] += ' --output_tab "$tab_file"'
-            xdict['outputs'] += ' <data format="%s" name="tab_file"/>\n' % self.outFormats
-        xdict['command'] = newCommand % xdict
-        #print xdict['outputs']
-        xmls = newXML % xdict
-        xf = open(self.xmlfile,'w')
-        xf.write(xmls)
-        xf.write('\n')
-        xf.close()
-        # ready for the tarball
-
-
-    def makeTooltar(self):
-        """
-        a tool is a gz tarball with eg
-        /toolname_sanitized/tool.xml /toolname_sanitized/tool.py /toolname_sanitized/test-data/test1_in.foo ...
-        """
-        retval = self.run()
-        if retval:
-            print >> sys.stderr,'## Run failed. Cannot build yet. Please fix and retry'
-            sys.exit(1)
-        tdir = self.toolname_sanitized
-        os.mkdir(tdir)
-        self.makeXML()
-        if self.opts.make_HTML:
-            if self.opts.help_text:
-                hlp = open(self.opts.help_text,'r').read()
-            else:
-                hlp = 'Please ask the tool author for help as none was supplied at tool generation\n'
-            if self.opts.include_dependencies:
-                tooldepcontent = toolhtmldepskel  % hlp
-                depf = open(os.path.join(tdir,'tool_dependencies.xml'),'w')
-                depf.write(tooldepcontent)
-                depf.write('\n')
-                depf.close()
-        if self.opts.input_tab <> 'None': # no reproducible test otherwise? TODO: maybe..
-            testdir = os.path.join(tdir,'test-data')
-            os.mkdir(testdir) # make tests directory
-	    for i in self.opts.input_tab:
-		  #print i
-	          shutil.copyfile(i,os.path.join(testdir,self.test1Input))
-            if not self.opts.output_tab:
-                shutil.copyfile(self.opts.output_tab,os.path.join(testdir,self.test1Output))
-            if self.opts.make_HTML:
-                shutil.copyfile(self.opts.output_html,os.path.join(testdir,self.test1HTML))
-            if self.opts.output_dir:
-                shutil.copyfile(self.tlog,os.path.join(testdir,'test1_out.log'))
-        outpif = '%s.py' % self.toolname_sanitized # new name
-        outpiname = os.path.join(tdir,outpif) # path for the tool tarball
-        pyin = os.path.basename(self.pyfile) # our name - we rewrite ourselves (TM)
-        notes = ['# %s - a self annotated version of %s generated by running %s\n' % (outpiname,pyin,pyin),]
-        notes.append('# to make a new Galaxy tool called %s\n' % self.toolname)
-        notes.append('# User %s at %s\n' % (self.opts.user_email,timenow()))
-        pi=[line.replace('if opts.dockerized==0:', 'if False:') for line in open(self.pyfile)] #do not run docker in the generated tool
-        notes += pi
-        outpi = open(outpiname,'w')
-        outpi.write(''.join(notes))
-        outpi.write('\n')
-        outpi.close()
-        stname = os.path.join(tdir,self.sfile)
-        if not os.path.exists(stname):
-            shutil.copyfile(self.sfile, stname)
-        xtname = os.path.join(tdir,self.xmlfile)
-        if not os.path.exists(xtname):
-            shutil.copyfile(self.xmlfile,xtname)
-        tarpath = "%s.gz" % self.toolname_sanitized
-        tar = tarfile.open(tarpath, "w:gz")
-        tar.add(tdir,arcname=self.toolname_sanitized)
-        tar.close()
-        shutil.copyfile(tarpath,self.opts.new_tool)
-        shutil.rmtree(tdir)
-        ## TODO: replace with optional direct upload to local toolshed?
-        return retval
+        self.test1Input = '%s_test1_input.xls' % self.scriptname
+        self.test1Output = '%s_test1_output.xls' % self.scriptname
+        self.test1HTML = '%s_test1_output.html' % self.scriptname
 
 
     def compressPDF(self,inpdf=None,thumbformat='png'):
@@ -455,10 +183,10 @@ o.close()
         hlog = os.path.join(self.opts.output_dir,"thumbnail_%s.txt" % os.path.basename(inpdf))
         sto = open(hlog,'w')
         outpng = '%s.%s' % (os.path.splitext(inpdf)[0],thumbformat)
-        if self.useGM:        
-            cl2 = ['gm', 'convert', inpdf, outpng]
-        else: # assume imagemagick
-            cl2 = ['convert', inpdf, outpng]
+#        if self.useGM:        
+#            cl2 = ['gm', 'convert', inpdf, outpng]
+#        else: # assume imagemagick
+        cl2 = ['convert', inpdf, outpng]
         x = subprocess.Popen(cl2,stdout=sto,stderr=sto,cwd=self.opts.output_dir,env=our_env)
         retval2 = x.wait()
         sto.close()
@@ -507,7 +235,7 @@ o.close()
         flist.sort()
         html = []
         html.append(galhtmlprefix % progname)
-        html.append('<div class="infomessage">Galaxy Tool "%s" run at %s</div><br/>' % (self.toolname,timenow()))
+        html.append('<div class="infomessage">Galaxy Tool "%s" run at %s</div><br/>' % (self.scriptname,timenow()))
         fhtml = []
         if len(flist) > 0:
             logfiles = [x for x in flist if x.lower().endswith('.log')] # log file names determine sections
@@ -610,6 +338,8 @@ o.close()
                 sto = open(self.tlog,'w')
                 sto.write('## Toolfactory generated command line = %s\n' % ' '.join(self.cl))
                 sto.flush()
+                print("commandline is %s" % (self.cl))
+                print("environment is %s" % (os.environ))
                 p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,stdin=subprocess.PIPE,cwd=self.opts.output_dir)
             else:
                 p = subprocess.Popen(self.cl,shell=False,stdin=subprocess.PIPE)
@@ -654,6 +384,7 @@ def main():
     """
     op = argparse.ArgumentParser()
     a = op.add_argument
+    a('--docker_image',default=None)
     a('--script_path',default=None)
     a('--tool_name',default=None)
     a('--interpreter',default=None)
@@ -663,21 +394,14 @@ def main():
     a('--output_tab',default='None')
     a('--user_email',default='Unknown')
     a('--bad_user',default=None)
-    a('--make_Tool',default=None)
     a('--make_HTML',default=None)
-    a('--help_text',default=None)
-    a('--tool_desc',default=None)
     a('--new_tool',default=None)
-    a('--tool_version',default=None)
-    a('--include_dependencies',default=None)
     a('--dockerized',default=0)
     a('--output_format', default='tabular')
     a('--input_format', dest='input_formats', action='append', default=[])
     a('--additional_parameters', dest='additional_parameters', action='append', default=[])
     opts = op.parse_args()
     assert not opts.bad_user,'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to admin_users in universe_wsgi.ini' % (opts.bad_user,opts.bad_user)
-    assert opts.tool_name,'## Tool Factory expects a tool name - eg --tool_name=DESeq'
-    assert opts.interpreter,'## Tool Factory wrapper expects an interpreter - eg --interpreter=Rscript'
     assert os.path.isfile(opts.script_path),'## Tool Factory wrapper expects a script path - eg --script_path=foo.R'
     if opts.output_dir:
         try:
@@ -688,10 +412,7 @@ def main():
       switch_to_docker(opts)
       return
     r = ScriptRunner(opts)
-    if opts.make_Tool:
-        retcode = r.makeTooltar()
-    else:
-        retcode = r.run()
+    retcode = r.run()
     os.unlink(r.sfile)
     if retcode:
         sys.exit(retcode) # indicate failure to job runner
