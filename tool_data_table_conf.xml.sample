@@ -2,6 +2,6 @@
     <!-- Place available docker images here -->
     <table name="docker_scriptrunner_images" comment_char="#">
         <columns>name, value</columns>
-        <file path="tool-data/docker_images.loc.sample" />
+        <file path="tool-data/docker_images.loc" />
     </table>
 </tables>

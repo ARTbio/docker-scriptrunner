@@ -77,9 +77,12 @@ def switch_to_docker(opts):
     volumes=binds.keys()
     sys.argv=[abspath(opts.output_dir) if sys.argv[i-1]=='--output_dir' else arg for i,arg in enumerate(sys.argv)] ##inject absolute path of working_dir
     cmd=['python', '-u']+sys.argv+['--dockerized', '1']
+    image_exists = [ True for image in docker_client.images() if opts.docker_image in image['RepoTags'] ]
+    if not image_exists:
+        docker_client.pull(opts.docker_image)
     container=docker_client.create_container(
-        image=opts.docker_image,  # Make this configureable through job_conf
-        user=current_user,  # TODO: make this configurable on the current user
+        image=opts.docker_image,
+        user=current_user,
         volumes=volumes,
         command=cmd
         )
@@ -100,7 +103,6 @@ class ScriptRunner:
         """
         self.opts = opts
         self.scriptname = 'script'
-        self.useGM = cmd_exists('gm')
         self.useIM = cmd_exists('convert')
         self.useGS = cmd_exists('gs')
         self.temp_warned = False # we want only one warning if $TMP not set
@@ -183,9 +185,6 @@ class ScriptRunner:
         hlog = os.path.join(self.opts.output_dir,"thumbnail_%s.txt" % os.path.basename(inpdf))
         sto = open(hlog,'w')
         outpng = '%s.%s' % (os.path.splitext(inpdf)[0],thumbformat)
-#        if self.useGM:        
-#            cl2 = ['gm', 'convert', inpdf, outpng]
-#        else: # assume imagemagick
         cl2 = ['convert', inpdf, outpng]
         x = subprocess.Popen(cl2,stdout=sto,stderr=sto,cwd=self.opts.output_dir,env=our_env)
         retval2 = x.wait()
