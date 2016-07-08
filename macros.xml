@@ -15,10 +15,6 @@
 **Output options** Optional script outputs include one single new history tabular file, or for scripts that create multiple outputs,
 a new HTML report linking all the files and images created by the script can be automatically generated.
 
-**Tool Generation option** Once the script is working with test data, this tool will optionally generate a new Galaxy tool in a gzip file
-ready to upload to your local toolshed for sharing and installation. Provide a small sample input when you run generate the tool because
-it will become the input for the generated functional test.
-
 .. class:: warningmark
 
 **Note to system administrators** This tool uses docker containers as protection against malicious scripts. It should only be installed on private/personnal Galaxy instances.
@@ -180,6 +176,9 @@ Licensed under the LGPL_
 .. _Paper: http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573?ijkey=lczQh1sWrMwdYWJ&amp;keytype=ref
 
     </help>
+<citations>
+  <citation type="doi">10.1093/bioinformatics/bts573</citation>
+</citations>
     </xml>
     <xml name="test_data_macro">
     </xml>

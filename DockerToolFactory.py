@@ -8,6 +8,7 @@ import os
 import time 
 import tempfile 
 import argparse
+import getpass
 import tarfile
 import re
 import shutil
@@ -63,28 +64,6 @@ def cmd_exists(cmd):
      return subprocess.call("type " + cmd, shell=True, 
            stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
 
-def edit_dockerfile(dockerfile):
-    '''we have to change the userid of galaxy inside the container to the id with which the tool is run,
-       otherwise we have a mismatch in the file permissions inside the container'''
-    uid=os.getuid()
-    for line in fileinput.FileInput(dockerfile, inplace=1):
-        sys.stdout.write(re.sub("RUN adduser galaxy.*",  "RUN adduser galaxy -u {0}\n".format(uid), line))
-
-#TODO: try to download image it it exists.
-def build_docker(dockerfile, docker_client, image_tag='base'):
-    '''Given the path to a dockerfile, and a docker_client, try to build the image, if it does not
-    exist yet.'''
-    image_id='toolfactory/custombuild:'+image_tag
-    existing_images=", ".join(["".join(d['RepoTags']) for d in docker_client.images()])
-    if image_id in existing_images:
-        print 'docker container exists, skipping build'
-        return image_id
-    print "Building Docker image, using Dockerfile:{0}".format(dockerfile)
-    build_process=docker_client.build(fileobj=open(dockerfile, 'r'), tag=image_id)
-    print "succesfully dispatched docker build process, building now"
-    build_log=[line for line in build_process] #will block until image is built.
-    return image_id 
-
 def construct_bind(host_path, container_path=False, binds=None, ro=True):
     #TODO remove container_path if it's alwyas going to be the same as host_path
     '''build or extend binds dictionary with container path. binds is used
@@ -104,33 +83,11 @@ def construct_bind(host_path, container_path=False, binds=None, ro=True):
         binds[host_path]={'bind':container_path, 'ro':ro}
         return binds
 
-def exists_boot2docker():
-    '''
-    Try to see if boot2docker command is available.
-    If it is, run boot2docker shellinit
-    '''
-    return cmd_exists('boot2docker')
-
-def boot2docker_shellinit():
-    '''
-    '''
-    cmd="eval \"\$(boot2docker shellinit)\""
-    subprocess.call(cmd, shell=True)
-
 def switch_to_docker(opts):
     import docker #need local import, as container does not have docker-py
-    if exists_boot2docker():
-        boot2docker_shellinit()
-        from docker.utils import kwargs_from_env
-        kwargs = kwargs_from_env()
-        kwargs['tls'].assert_hostname = False
-        docker_client = docker.Client(**kwargs)
-    else:
-        docker_client=docker.Client()
+    current_user = getpass.getuser()
+    docker_client=docker.Client()
     toolfactory_path=abspath(sys.argv[0])
-    dockerfile=os.path.dirname(toolfactory_path)+'/Dockerfile'
-    edit_dockerfile(dockerfile)
-    image_id=build_docker(dockerfile, docker_client)
     binds=construct_bind(host_path=opts.script_path, ro=False)
     binds=construct_bind(binds=binds, host_path=abspath(opts.output_dir), ro=False)
     if len(opts.input_tab)>0:
@@ -147,8 +104,8 @@ def switch_to_docker(opts):
     sys.argv=[abspath(opts.output_dir) if sys.argv[i-1]=='--output_dir' else arg for i,arg in enumerate(sys.argv)] ##inject absolute path of working_dir
     cmd=['python', '-u']+sys.argv+['--dockerized', '1']
     container=docker_client.create_container(
-        image=image_id,
-        user='galaxy',
+        image='mvdbeek/scriptrunner',  # Make this configureable through job_conf
+        user=current_user,  # TODO: make this configurable on the current user
         volumes=volumes,
         command=cmd
         )
@@ -156,6 +113,7 @@ def switch_to_docker(opts):
     docker_client.wait(container=container[u'Id'])
     logs=docker_client.logs(container=container[u'Id'])
     print "".join([log for log in logs])
+    docker_client.remove_container(container[u'Id'])
 
 class ScriptRunner:
     """class is a wrapper for an arbitrary script
