@@ -1,4 +1,6 @@
+[![Build Status](https://travis-ci.org/ARTbio/docker-scriptrunner.svg?branch=master)](https://travis-ci.org/ARTbio/docker-scriptrunner)
 
+You need to have docker 
 Docker scriptrunner for galaxy
 -----------------------------
 
