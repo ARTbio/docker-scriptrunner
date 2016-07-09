@@ -1,0 +1,19 @@
+sudo: required
+
+language: python
+python: 2.7
+
+services:
+  - docker
+
+before_install:
+  - bash dockerfiles/build.sh
+
+script:
+  - bash test.sh
+
+deploy:
+  provider: script
+  script: bash ./dockerfiles/deploy.sh
+  on:
+    branch: master

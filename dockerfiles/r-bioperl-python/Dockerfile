@@ -3,7 +3,7 @@
 # VERSION       0.3
 # This Dockerfile is the base system for executing scripts with the docker scriptrunner.
 
-FROM mvdbeek/scriptrunner
+FROM artbio/scriptrunner
 
 MAINTAINER Marius van den Beek, m.vandenbeek@gmail.com
 

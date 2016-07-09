@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -qq update
 
 # Install all requirements that are recommend by the Galaxy project
-RUN apt-get install -y --no-install-recommends imagemagick libfreetype6-dev wget curl \
+RUN apt-get install -y --no-install-recommends bc imagemagick libfreetype6-dev wget curl \
 libcurl4-openssl-dev libssl-dev libreadline-dev libxml2-dev liblzma-dev \
 libpcre3-dev libbz2-dev libx11-dev 
 
@@ -31,7 +31,7 @@ RUN bash -c "conda create -y -q -c bioconda --name default samtools==0.1.19 bcft
     conda config --add channels bioconda && \
     conda config --add channels iuc && \
     . activate default && \
-    conda install ghostscript"
+    conda install ghostscript coreutils"
 USER root
 RUN chown -R galaxy:users /home/galaxy && \
     chmod g=rwx /home/galaxy && \
