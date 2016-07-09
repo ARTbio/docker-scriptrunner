@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <tool_dependency>
-    <package name="docker-py" version="0.4.0">
+    <package name="docker-py" version="1.8.1">
         <install version="1.0">
             <actions>
-                <action type="setup_virtualenv">docker-py==0.4.0
+                <action type="setup_virtualenv">docker-py==1.8.1
                 </action>
             </actions>
         </install>

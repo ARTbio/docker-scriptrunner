@@ -9,5 +9,5 @@ MAINTAINER Marius van den Beek, m.vandenbeek@gmail.com
 
 USER root
 RUN su - galaxy -c 'bash -c ". /home/galaxy/conda/bin/activate default && \
-    conda install -y ncurses biopython perl-bioperl bedtools bioconductor-deseq2 bioconductor-edger numpy scipy"' && \
+    conda install -y ncurses biopython perl-bioperl bedtools bioconductor-deseq2 bioconductor-edger numpy scipy r-reshape"' && \
     chown -R galaxy:users /home/galaxy && chmod g=rwx /home/galaxy
