@@ -9,6 +9,9 @@ services:
 before_install:
   - bash dockerfiles/build.sh
 
+install:
+  - pip install planemo
+
 script:
   - bash test.sh
 
