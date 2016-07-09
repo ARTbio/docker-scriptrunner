@@ -337,8 +337,6 @@ class ScriptRunner:
                 sto = open(self.tlog,'w')
                 sto.write('## Toolfactory generated command line = %s\n' % ' '.join(self.cl))
                 sto.flush()
-                print("commandline is %s" % (self.cl))
-                print("environment is %s" % (os.environ))
                 p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,stdin=subprocess.PIPE,cwd=self.opts.output_dir)
             else:
                 p = subprocess.Popen(self.cl,shell=False,stdin=subprocess.PIPE)
@@ -382,7 +380,7 @@ def change_user_id(new_uid, new_gid):
     """
     cmd1 = ["/usr/sbin/usermod", "-d", "/var/home/galaxy", "galaxy"]
     cmd2 = ["/usr/sbin/usermod", "-u", new_uid, "galaxy"]
-    cmd3 = ["/usr/sbin/groupmod", "-g", "1450", new_gid]
+    cmd3 = ["/usr/sbin/groupmod", "-g", new_gid, "galaxy"]
     cmd4 = ["/usr/sbin/usermod", "-d", "/home/galaxy", "galaxy"]
     [subprocess.call(cmd) for cmd in [cmd1, cmd2, cmd3, cmd4]]
 
