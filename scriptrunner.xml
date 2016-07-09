@@ -1,5 +1,5 @@
-<tool id="docker_scriptrunner" name="Docker Scriptrunner" version="0.1.6">
-  <description>Makes scripts into tools using Docker</description>
+<tool id="docker_scriptrunner" name="docker scriptrunner" version="0.1.6">
+  <description>Runs scripts using docker</description>
   <macros>
     <import>macros.xml</import>
   </macros>
@@ -46,13 +46,8 @@
 </configfiles>
   <inputs>
     <repeat name="input_files" title="Select input files">
-      <param name="input"  type="data"  label="Select an input file from your history" optional="true" size="120"
+      <param name="input" format="data" type="data"  label="Select an input file from your history" optional="true" size="120"
          help="Most scripts will need an input - your script MUST be ready for whatever format you choose"/>
-      <param name="in_format" type="select" optional="true" multiple="true" label="Optional: Select the allowed input datatype(s) for your tool/script">
-        <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
-          <column name="value" index="0"/>
-        </options>
-    </param>
     </repeat>
     <repeat name="additional_parameters" title="Set additional parameters">
       <param name="param_name" type="text" value="parameter_name" label="Choose a parameter name" size="20">
@@ -120,6 +115,18 @@
         <filter>make_HTML == "yes"</filter>
     </data>
  </outputs>
+<tests>
+    <test>
+        <param name='input_tab' value='tf2_test_in.xls' ftype='tabular' />
+        <param name="make_TAB" value="yes" />
+        <param name="make_HTML" value="yes" />
+        <param name="out_format" value="tabular" />
+        <param name="interpreter" value='python' />
+        <param name="runme" value="tf2_test_runme.py"/>
+        <output name='output1' file='tf2_test_out.xls' compare='diff' lines_diff = '10'/>
+        <output name='html_file' file="tf2_test.html" compare='diff' lines_diff = '10'/>
+    </test>
+</tests>
 <expand macro="help_macro" />
 <expand macro="test_data_macro" />
 </tool>
