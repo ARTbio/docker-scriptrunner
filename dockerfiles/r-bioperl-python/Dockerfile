@@ -11,3 +11,4 @@ USER galaxy
 RUN bash -c ". activate default && \
     conda install -y ncurses biopython perl-bioperl bedtools bioconductor-deseq2 bioconductor-edger numpy scipy"
 USER root
+RUN chown -R galaxy:users /home/galaxy && chmod g=rwx /home/galaxy

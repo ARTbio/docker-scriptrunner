@@ -17,12 +17,12 @@ libcurl4-openssl-dev libssl-dev libreadline-dev libxml2-dev liblzma-dev \
 libpcre3-dev libbz2-dev libx11-dev 
 
 RUN mkdir /var/home && \
-    useradd galaxy --create-home --home-dir /var/home/galaxy  --uid 1450 && \
-    chown -R galaxy:galaxy /var/home/galaxy/
+    useradd galaxy --create-home --home-dir /home/galaxy  --uid 1450 && \
+    chown -R galaxy:galaxy /home/galaxy/
 USER galaxy
-WORKDIR /var/home/galaxy
-ENV CONDA_PREFIX="/var/home/galaxy/conda" \
-    PATH="/var/home/galaxy/conda/envs/default/bin:/var/home/galaxy/conda/bin:$PATH"
+WORKDIR /home/galaxy
+ENV CONDA_PREFIX="/home/galaxy/conda" \
+    PATH="/home/galaxy/conda/envs/default/bin:/home/galaxy/conda/bin:$PATH"
 
 RUN curl https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -L -o miniconda.sh 
 RUN bash miniconda.sh -b -p "$CONDA_PREFIX" && rm miniconda.sh
@@ -33,3 +33,6 @@ RUN bash -c "conda create -y -q -c bioconda --name default samtools==0.1.19 bcft
     . activate default && \
     conda install ghostscript"
 USER root
+RUN chown -R galaxy:users /home/galaxy && \
+    chmod g=rwx /home/galaxy && \
+    usermod -G users galaxy

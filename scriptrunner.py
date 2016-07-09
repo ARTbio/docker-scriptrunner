@@ -375,28 +375,17 @@ class ScriptRunner:
         return retval
   
 
-def change_group_id(group_id):
+def change_user_id(new_uid, new_gid):
     """
     To avoid issues with wrong user ids, we change the user id of the 'galaxy' user in the container
     to the user id with which the script has been called initially.
     """
-    old_gid = 1450  # specified in Dockerfile
-    cmd = ["/usr/sbin/groupmod", "-g", group_id , "galaxy"]
-    subprocess.call(cmd)
+    cmd1 = ["/usr/sbin/usermod", "-d", "/var/home/galaxy", "galaxy"]
+    cmd2 = ["/usr/sbin/usermod", "-u", new_uid, "galaxy"]
+    cmd3 = ["/usr/sbin/groupmod", "-g", "1450", new_gid]
+    cmd4 = ["/usr/sbin/usermod", "-d", "/home/galaxy", "galaxy"]
+    [subprocess.call(cmd) for cmd in [cmd1, cmd2, cmd3, cmd4]]
 
-
-def change_user_id(new_id):
-    """
-    To avoid issues with wrong user ids, we change the user id of the 'galaxy' user in the container
-    to the user id with which the script has been called initially.
-    """
-    cmd = ["/usr/sbin/usermod", "-u", new_id, "galaxy"]
-    subprocess.call(cmd)
-
-
-def update_permissions():
-    cmd = ["/bin/chown", "-R", "galaxy:galaxy", "/var/home/galaxy"]
-    subprocess.call(cmd)
 
 def main():
     u = """
@@ -435,11 +424,9 @@ def main():
     if opts.dockerized==0:
       switch_to_docker(opts)
       return
-    change_user_id(opts.user_id)
-    change_group_id(opts.group_id)
+    change_user_id(opts.user_id, opts.group_id)
     os.setgid(int(opts.group_id))
     os.setuid(int(opts.user_id))
-    update_permissions()
     r = ScriptRunner(opts)
     retcode = r.run()
     os.unlink(r.sfile)
