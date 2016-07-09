@@ -31,12 +31,7 @@
 	  $i.input
 	#end for
         #for i in $input_files:
-          --input_format
-          #if str($i.in_format) == "None":
-            "Any"
-          #else 
-            "$i.in_format"
-          #end if
+          --input_format "Any"
         #end for
     #end if
     --docker_image "$docker_image" 
