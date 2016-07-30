@@ -110,10 +110,7 @@ class ScriptRunner:
         self.html = []
         a = self.cl.append
         a(opts.interpreter)
-        if self.treatbashSpecial and opts.interpreter in ['bash','sh']:
-            a(self.sfile)
-        else:
-            a('-') # stdin
+        a(self.sfile)
         for input in opts.input_file:
             a(input)
             if opts.output_file == 'None': #If tool generates only HTML, set output name to toolname
@@ -285,36 +282,7 @@ class ScriptRunner:
         htmlf.close()
         self.html = html
 
-
     def run(self):
-        """
-        scripts must be small enough not to fill the pipe!
-        """
-        if self.treatbashSpecial and self.opts.interpreter in ['bash','sh']:
-            retval = self.runBash()
-        else:
-            if self.opts.output_dir:
-                ste = open(self.elog,'w')
-                sto = open(self.tlog,'w')
-                sto.write('## Toolfactory generated command line = %s\n' % ' '.join(self.cl))
-                sto.flush()
-                p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,stdin=subprocess.PIPE,cwd=self.opts.output_dir)
-            else:
-                p = subprocess.Popen(self.cl,shell=False,stdin=subprocess.PIPE)
-            p.stdin.write(self.script)
-            p.stdin.close()
-            retval = p.wait()
-            if self.opts.output_dir:
-                sto.close()
-                ste.close()
-                err = open(self.elog,'r').readlines()
-                if retval <> 0 and err: # problem
-                    print >> sys.stderr,err #same problem, need to capture docker stdin/stdout
-            if self.opts.make_HTML:
-                self.makeHtml()
-        return retval
-
-    def runBash(self):
         """
         cannot use - for bash so use self.sfile
         """
