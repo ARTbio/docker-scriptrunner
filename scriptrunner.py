@@ -21,20 +21,6 @@ def timenow():
     """
     return time.strftime('%d/%m/%Y %H:%M:%S', time.localtime(time.time()))
 
-html_escape_table = {
-    "&": "&amp;",
-    ">": "&gt;",
-    "<": "&lt;",
-    "$": "\$"
-}
-
-def html_escape(text):
-    """Produce entities within text."""
-    return "".join(html_escape_table.get(c,c) for c in text)
-
-def cmd_exists(cmd):
-    return subprocess.call("type " + cmd, shell=True,
-                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
 
 def construct_bind(host_path, container_path=False, binds=None, ro=True):
     #TODO remove container_path if it's alwyas going to be the same as host_path
@@ -54,6 +40,7 @@ def construct_bind(host_path, container_path=False, binds=None, ro=True):
             container_path=host_path
         binds[host_path]={'bind':container_path, 'ro':ro}
         return binds
+
 
 def switch_to_docker(opts):
     import docker  # need local import, as container does not have docker-py
@@ -84,8 +71,9 @@ def switch_to_docker(opts):
     docker_client.start(container=container[u'Id'], binds=binds)
     docker_client.wait(container=container[u'Id'])
     logs=docker_client.logs(container=container[u'Id'])
-    print "".join([log for log in logs])
+    print("".join([log for log in logs]))
     docker_client.remove_container(container[u'Id'])
+
 
 class ScriptRunner:
     """class is a wrapper for an arbitrary script
@@ -98,8 +86,6 @@ class ScriptRunner:
         """
         self.opts = opts
         self.scriptname = 'script'
-        self.useIM = cmd_exists('convert')
-        self.useGS = cmd_exists('gs')
         self.temp_warned = False # we want only one warning if $TMP not set
         self.treatbashSpecial = treatbashSpecial
         self.image_tag = image_tag
@@ -112,8 +98,6 @@ class ScriptRunner:
         tscript = open(self.sfile,'w') # use self.sfile as script source for Popen
         tscript.write(self.script)
         tscript.close()
-        self.indentedScript = '\n'.join([' %s' % html_escape(x) for x in s]) # for restructured text in help
-        self.escapedScript = '\n'.join([html_escape(x) for x in s])
         self.elog = os.path.join(self.opts.output_dir,"%s_error.log" % self.scriptname)
         if opts.output_dir: # may not want these complexities
             self.tlog = os.path.join(self.opts.output_dir,"%s_runner.log" % self.scriptname)
@@ -145,43 +129,27 @@ class ScriptRunner:
         self.test1Output = '%s_test1_output.xls' % self.scriptname
         self.test1HTML = '%s_test1_output.html' % self.scriptname
 
-
-    def compressPDF(self,inpdf=None,thumbformat='png'):
-        """need absolute path to pdf
-           note that GS gets confoozled if no $TMP or $TEMP
-           so we set it
+    def compressPDF(self, inpdf=None, thumbformat='png'):
         """
-        assert os.path.isfile(inpdf), "## Input %s supplied to %s compressPDF not found" % (inpdf,self.myName)
+        inpdf is absolute path to PDF
+        """
+        assert os.path.isfile(inpdf), "## Input %s supplied to %s compressPDF not found" % (inpdf, self.myName)
         hlog = os.path.join(self.opts.output_dir,"compress_%s.txt" % os.path.basename(inpdf))
         sto = open(hlog,'a')
-        our_env = os.environ.copy()
-        our_tmp = our_env.get('TMP',None)
-        if not our_tmp:
-            our_tmp = our_env.get('TEMP',None)
-        if not (our_tmp and os.path.exists(our_tmp)):
-            newtmp = os.path.join(self.opts.output_dir,'tmp')
-            try:
-                os.mkdir(newtmp)
-            except:
-                sto.write('## WARNING - cannot make %s - it may exist or permissions need fixing\n' % newtmp)
-            our_env['TEMP'] = newtmp
-            if not self.temp_warned:
-                sto.write('## WARNING - no $TMP or $TEMP!!! Please fix - using %s temporarily\n' % newtmp)
-                self.temp_warned = True
         outpdf = '%s_compressed' % inpdf
-        cl = ["gs", "-sDEVICE=pdfwrite", "-dNOPAUSE", "-dUseCIEColor", "-dBATCH","-dPDFSETTINGS=/printer", "-sOutputFile=%s" % outpdf,inpdf]
-        x = subprocess.Popen(cl,stdout=sto,stderr=sto,cwd=self.opts.output_dir,env=our_env)
+        cl = ["gs", "-sDEVICE=pdfwrite", "-dNOPAUSE", "-dUseCIEColor", "-dBATCH","-dPDFSETTINGS=/printer", "-sOutputFile=%s" % outpdf, inpdf]
+        x = subprocess.Popen(cl, stdout=sto, stderr=sto, cwd=self.opts.output_dir)
         retval1 = x.wait()
         sto.close()
         if retval1 == 0:
             os.unlink(inpdf)
-            shutil.move(outpdf,inpdf)
+            shutil.move(outpdf, inpdf)
             os.unlink(hlog)
-        hlog = os.path.join(self.opts.output_dir,"thumbnail_%s.txt" % os.path.basename(inpdf))
-        sto = open(hlog,'w')
-        outpng = '%s.%s' % (os.path.splitext(inpdf)[0],thumbformat)
+        hlog = os.path.join(self.opts.output_dir, "thumbnail_%s.txt" % os.path.basename(inpdf))
+        sto = open(hlog, 'w')
+        outpng = '%s.%s' % (os.path.splitext(inpdf)[0], thumbformat)
         cl2 = ['convert', inpdf, outpng]
-        x = subprocess.Popen(cl2,stdout=sto,stderr=sto,cwd=self.opts.output_dir,env=our_env)
+        x = subprocess.Popen(cl2, stdout=sto, stderr=sto, cwd=self.opts.output_dir)
         retval2 = x.wait()
         sto.close()
         if retval2 == 0:
@@ -189,22 +157,21 @@ class ScriptRunner:
         retval = retval1 or retval2
         return retval
 
-
-    def getfSize(self,fpath,outpath):
+    def getfSize(self, fpath, outpath):
         """
         format a nice file size string
         """
         size = ''
-        fp = os.path.join(outpath,fpath)
+        fp = os.path.join(outpath, fpath)
         if os.path.isfile(fp):
             size = '0 B'
             n = float(os.path.getsize(fp))
             if n > 2**20:
-                size = '%1.1f MB' % (n/2**20)
+                size = "%1.1f MB" % (n/2**20)
             elif n > 2**10:
-                size = '%1.1f KB' % (n/2**10)
+                size = "%1.1f KB" % (n/2**10)
             elif n > 0:
-                size = '%d B' % (int(n))
+                size = "%d B" % (int(n))
         return size
 
     def makeHtml(self):
@@ -228,7 +195,7 @@ class ScriptRunner:
         flist.sort()
         html = []
         html.append(galhtmlprefix % progname)
-        html.append('<div class="infomessage">Galaxy Tool "%s" run at %s</div><br/>' % (self.scriptname,timenow()))
+        html.append('<div class="infomessage">Galaxy Tool "%s" run at %s</div><br/>' % (self.scriptname, timenow()))
         fhtml = []
         if len(flist) > 0:
             logfiles = [x for x in flist if x.lower().endswith('.log')] # log file names determine sections
@@ -239,11 +206,11 @@ class ScriptRunner:
             npdf = len([x for x in flist if os.path.splitext(x)[-1].lower() == '.pdf'])
             for rownum,fname in enumerate(flist):
                 dname,e = os.path.splitext(fname)
-                sfsize = self.getfSize(fname,self.opts.output_dir)
+                sfsize = self.getfSize(fname, self.opts.output_dir)
                 if e.lower() == '.pdf' : # compress and make a thumbnail
-                    thumb = '%s.%s' % (dname,self.thumbformat)
+                    thumb = '%s.%s' % (dname, self.thumbformat)
                     pdff = os.path.join(self.opts.output_dir,fname)
-                    retval = self.compressPDF(inpdf=pdff,thumbformat=self.thumbformat)
+                    retval = self.compressPDF(inpdf=pdff, thumbformat=self.thumbformat)
                     if retval == 0:
                         pdflist.append((fname,thumb))
                     else:
