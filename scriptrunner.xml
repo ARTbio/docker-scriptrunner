@@ -11,8 +11,8 @@
     --script_path "$runme"
     --interpreter "$interpreter"
     --user_email "$__user_email__"
-    #if $generate_simple_output.make_TAB=="yes":
-       --output_tab "$tab_file"
+    #if $generate_simple_output.make_file=="yes":
+       --output_file "$output_file"
     #end if
     #if $make_HTML.value=="yes":
       --output_dir "$html_file.files_path" --output_html "$html_file" --make_HTML "yes"
@@ -26,7 +26,7 @@
       #end for
     #end if
     #if $input_files != 'None':
-       --input_tab 
+       --input_file
 	#for i in $input_files:
 	  $i.input
 	#end for
@@ -64,8 +64,8 @@
         <option value="" selected="true">No, no HTML output file thanks</option>
     </param>
     <conditional name="generate_simple_output">
-      <param name="make_TAB" type="select" label="Create a new history output alongside the HTML file specified above" 
-           help="This is useful if your script creates a single new tabular file you want to appear in the history after the tool executes">
+      <param name="make_file" type="select" label="Create a new history output alongside the HTML file specified above"
+           help="This is useful if your script creates a single new file that you want to appear in the history after the tool executes">
           <option value="yes" selected="true">My script writes to a new history output</option>
           <option value="">I do not want a new history output file</option>
       </param>
@@ -98,8 +98,8 @@
      </param>
   </inputs>
   <outputs>
-    <data format_source="input" name="tab_file">
-      <filter>generate_simple_output['make_TAB'] == "yes"</filter>
+    <data format_source="input" name="output_file">
+      <filter>generate_simple_output['make_file'] == "yes"</filter>
         <actions>
           <action type="format">
                 <option type="from_param" name="generate_simple_output.out_format" />
@@ -112,14 +112,14 @@
  </outputs>
 <tests>
     <test>
-        <param name='input_tab' value='tf2_test_in.xls' ftype='tabular' />
-        <param name="make_TAB" value="yes" />
-        <param name="make_HTML" value="yes" />
-        <param name="out_format" value="tabular" />
-        <param name="interpreter" value='python' />
+        <param name="input_file" value="tf2_test_in.xls" ftype="tabular"/>
+        <param name="make_file" value="yes"/>
+        <param name="make_HTML" value="yes"/>
+        <param name="out_format" value="tabular"/>
+        <param name="interpreter" value="python"/>
         <param name="runme" value="tf2_test_runme.py"/>
-        <output name='output1' file='tf2_test_out.xls' compare='diff' lines_diff = '10'/>
-        <output name='html_file' file="tf2_test.html" compare='diff' lines_diff = '10'/>
+        <output name="output_file" file="tf2_test_out.xls"/>
+        <output name="html_file" file="tf2_test.html" compare="diff" lines_diff="10"/>
     </test>
 </tests>
 <expand macro="help_macro" />

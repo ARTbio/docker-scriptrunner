@@ -1,24 +1,19 @@
 # DockerToolFactory.py
 # see https://github.com/mvdbeek/scriptrunner
 
-import sys 
-import shutil 
-import subprocess 
-import os 
-import time 
-import tempfile 
+import sys
+import subprocess
+import os
+import time
+import tempfile
 import argparse
-import getpass
-import tarfile
-import re
 import shutil
 import math
-import fileinput
-from os.path import abspath 
+from os.path import abspath
 
 
-progname = os.path.split(sys.argv[0])[1] 
-verbose = False 
+progname = os.path.split(sys.argv[0])[1]
+verbose = False
 debug = False
 
 def timenow():
@@ -27,19 +22,19 @@ def timenow():
     return time.strftime('%d/%m/%Y %H:%M:%S', time.localtime(time.time()))
 
 html_escape_table = {
-     "&": "&amp;",
-     ">": "&gt;",
-     "<": "&lt;",
-     "$": "\$"
-     }
+    "&": "&amp;",
+    ">": "&gt;",
+    "<": "&lt;",
+    "$": "\$"
+}
 
 def html_escape(text):
-     """Produce entities within text."""
-     return "".join(html_escape_table.get(c,c) for c in text)
+    """Produce entities within text."""
+    return "".join(html_escape_table.get(c,c) for c in text)
 
 def cmd_exists(cmd):
-     return subprocess.call("type " + cmd, shell=True, 
-           stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
+    return subprocess.call("type " + cmd, shell=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
 
 def construct_bind(host_path, container_path=False, binds=None, ro=True):
     #TODO remove container_path if it's alwyas going to be the same as host_path
@@ -61,22 +56,22 @@ def construct_bind(host_path, container_path=False, binds=None, ro=True):
         return binds
 
 def switch_to_docker(opts):
-    import docker #need local import, as container does not have docker-py
+    import docker  # need local import, as container does not have docker-py
     user_id = os.getuid()
     group_id = os.getgid()
     docker_client=docker.Client()
     toolfactory_path=abspath(sys.argv[0])
     binds=construct_bind(host_path=opts.script_path, ro=False)
     binds=construct_bind(binds=binds, host_path=abspath(opts.output_dir), ro=False)
-    if len(opts.input_tab)>0:
-        binds=construct_bind(binds=binds, host_path=opts.input_tab, ro=True)
-    if not opts.output_tab == 'None':
-        binds=construct_bind(binds=binds, host_path=opts.output_tab, ro=False)
+    if len(opts.input_file)>0:
+        binds=construct_bind(binds=binds, host_path=opts.input_file, ro=True)
+    if not opts.output_file == 'None':
+        binds=construct_bind(binds=binds, host_path=opts.output_file, ro=False)
     if opts.make_HTML:
         binds=construct_bind(binds=binds, host_path=opts.output_html, ro=False)
     binds=construct_bind(binds=binds, host_path=toolfactory_path)
     volumes=binds.keys()
-    sys.argv=[abspath(opts.output_dir) if sys.argv[i-1]=='--output_dir' else arg for i,arg in enumerate(sys.argv)] ##inject absolute path of working_dir
+    sys.argv=[abspath(opts.output_dir) if sys.argv[i-1]=='--output_dir' else arg for i,arg in enumerate(sys.argv)]  # inject absolute path of working_dir
     cmd=['python', '-u']+sys.argv+['--dockerized', '1', "--user_id", str(user_id), "--group_id", str(group_id)]
     image_exists = [ True for image in docker_client.images() if opts.docker_image in image['RepoTags'] ]
     if not image_exists:
@@ -85,7 +80,7 @@ def switch_to_docker(opts):
         image=opts.docker_image,
         volumes=volumes,
         command=cmd
-        )
+    )
     docker_client.start(container=container[u'Id'], binds=binds)
     docker_client.wait(container=container[u'Id'])
     logs=docker_client.logs(container=container[u'Id'])
@@ -96,7 +91,7 @@ class ScriptRunner:
     """class is a wrapper for an arbitrary script
     """
 
-    def __init__(self,opts=None,treatbashSpecial=True, image_tag='base'):
+    def __init__(self, opts=None, treatbashSpecial=True, image_tag='base'):
         """
         cleanup inputs, setup some outputs
         
@@ -135,15 +130,15 @@ class ScriptRunner:
             a(self.sfile)
         else:
             a('-') # stdin
-	for input in opts.input_tab:
-	  a(input) 
-        if opts.output_tab == 'None': #If tool generates only HTML, set output name to toolname
-            a(str(self.scriptname)+'.out')
-        a(opts.output_tab)
-	for param in opts.additional_parameters:
-          param, value=param.split(',')
-          a('--'+param)
-          a(value)
+        for input in opts.input_file:
+            a(input)
+            if opts.output_file == 'None': #If tool generates only HTML, set output name to toolname
+                a(str(self.scriptname)+'.out')
+            a(opts.output_file)
+        for param in opts.additional_parameters:
+            param, value=param.split(',')
+            a('--'+param)
+            a(value)
         self.outFormats = opts.output_format
         self.inputFormats = [formats for formats in opts.input_formats]
         self.test1Input = '%s_test1_input.xls' % self.scriptname
@@ -171,8 +166,8 @@ class ScriptRunner:
                 sto.write('## WARNING - cannot make %s - it may exist or permissions need fixing\n' % newtmp)
             our_env['TEMP'] = newtmp
             if not self.temp_warned:
-               sto.write('## WARNING - no $TMP or $TEMP!!! Please fix - using %s temporarily\n' % newtmp)
-               self.temp_warned = True          
+                sto.write('## WARNING - no $TMP or $TEMP!!! Please fix - using %s temporarily\n' % newtmp)
+                self.temp_warned = True
         outpdf = '%s_compressed' % inpdf
         cl = ["gs", "-sDEVICE=pdfwrite", "-dNOPAUSE", "-dUseCIEColor", "-dBATCH","-dPDFSETTINGS=/printer", "-sOutputFile=%s" % outpdf,inpdf]
         x = subprocess.Popen(cl,stdout=sto,stderr=sto,cwd=self.opts.output_dir,env=our_env)
@@ -190,7 +185,7 @@ class ScriptRunner:
         retval2 = x.wait()
         sto.close()
         if retval2 == 0:
-             os.unlink(hlog)
+            os.unlink(hlog)
         retval = retval1 or retval2
         return retval
 
@@ -216,17 +211,16 @@ class ScriptRunner:
         """ Create an HTML file content to list all the artifacts found in the output_dir
         """
 
-        galhtmlprefix = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> 
-        <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"> 
-        <head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
-        <meta name="generator" content="Galaxy %s tool output - see http://g2.trac.bx.psu.edu/" /> 
-        <title></title> 
-        <link rel="stylesheet" href="/static/style/base.css" type="text/css" /> 
-        </head> 
-        <body> 
-        <div class="toolFormBody"> 
-        """ 
-        galhtmlattr = """<hr/><div class="infomessage">This tool (%s) was generated by the <a href="https://bitbucket.org/fubar/galaxytoolfactory/overview">Galaxy Tool Factory</a></div><br/>""" 
+        galhtmlprefix = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+            <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+            <head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+            <meta name="generator" content="Galaxy %s tool output - see http://g2.trac.bx.psu.edu/" />
+            <title></title>
+            <link rel="stylesheet" href="/static/style/base.css" type="text/css" />
+            </head>
+            <body>
+            <div class="toolFormBody">
+"""
         galhtmlpostfix = """</div></body></html>\n"""
 
         flist = os.listdir(self.opts.output_dir)
@@ -282,16 +276,16 @@ class ScriptRunner:
                     html.append('(Click on a thumbnail image to download the corresponding original PDF image)<br/>')
                     ntogo = nacross # counter for table row padding with empty cells
                     html.append('<div><table class="simple" cellpadding="2" cellspacing="2">\n<tr>')
-                    for i,paths in enumerate(ourpdfs): 
+                    for i,paths in enumerate(ourpdfs):
                         fname,thumb = paths
-                        s= """<td><a href="%s"><img src="%s" title="Click to download a PDF of %s" hspace="5" width="%d" 
-                           alt="Image called %s"/></a></td>\n""" % (fname,thumb,fname,width,fname)
+                        s= """<td><a href="%s"><img src="%s" title="Click to download a PDF of %s" hspace="5" width="%d"
+                               alt="Image called %s"/></a></td>\n""" % (fname,thumb,fname,width,fname)
                         if ((i+1) % nacross == 0):
                             s += '</tr>\n'
                             ntogo = 0
                             if i < (npdf - 1): # more to come
-                               s += '<tr>'
-                               ntogo = nacross
+                                s += '<tr>'
+                                ntogo = nacross
                         else:
                             ntogo -= 1
                         html.append(s)
@@ -299,7 +293,7 @@ class ScriptRunner:
                         html.append('</table></div>\n')
                     else:
                         if ntogo > 0: # pad
-                           html.append('<td>&nbsp;</td>'*ntogo)
+                            html.append('<td>&nbsp;</td>'*ntogo)
                         html.append('</tr></table></div>\n')
                 logt = open(logfname,'r').readlines()
                 logtext = [x for x in logt if x.strip() > '']
@@ -311,10 +305,10 @@ class ScriptRunner:
                 else:
                     html.append('%s is empty<br/>' % logfname)
         if len(fhtml) > 0:
-           fhtml.insert(0,'<div><table class="colored" cellpadding="3" cellspacing="3"><tr><th>Output File Name (click to view)</th><th>Size</th></tr>\n')
-           fhtml.append('</table></div><br/>')
-           html.append('<div class="toolFormTitle">All output files available for downloading</div>\n')
-           html += fhtml # add all non-pdf files to the end of the display
+            fhtml.insert(0,'<div><table class="colored" cellpadding="3" cellspacing="3"><tr><th>Output File Name (click to view)</th><th>Size</th></tr>\n')
+            fhtml.append('</table></div><br/>')
+            html.append('<div class="toolFormTitle">All output files available for downloading</div>\n')
+            html += fhtml # add all non-pdf files to the end of the display
         else:
             html.append('<div class="warningmessagelarge">### Error - %s returned no files - please confirm that parameters are sane</div>' % self.opts.interpreter)
         html.append(galhtmlpostfix)
@@ -330,7 +324,7 @@ class ScriptRunner:
         scripts must be small enough not to fill the pipe!
         """
         if self.treatbashSpecial and self.opts.interpreter in ['bash','sh']:
-          retval = self.runBash()
+            retval = self.runBash()
         else:
             if self.opts.output_dir:
                 ste = open(self.elog,'w')
@@ -364,14 +358,14 @@ class ScriptRunner:
             sto.flush()
             p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=sto,cwd=self.opts.output_dir)
         else:
-            p = subprocess.Popen(self.cl,shell=False)            
+            p = subprocess.Popen(self.cl,shell=False)
         retval = p.wait()
         if self.opts.output_dir:
             sto.close()
         if self.opts.make_HTML:
             self.makeHtml()
         return retval
-  
+
 
 def change_user_id(new_uid, new_gid):
     """
@@ -399,8 +393,8 @@ def main():
     a('--interpreter',default=None)
     a('--output_dir',default='./')
     a('--output_html',default=None)
-    a('--input_tab',default='None', nargs='*')
-    a('--output_tab',default='None')
+    a('--input_file',default='None', nargs='*')
+    a('--output_file',default='None')
     a('--user_email',default='Unknown')
     a('--bad_user',default=None)
     a('--make_HTML',default=None)
@@ -420,8 +414,8 @@ def main():
         except:
             pass
     if opts.dockerized==0:
-      switch_to_docker(opts)
-      return
+        switch_to_docker(opts)
+        return
     change_user_id(opts.user_id, opts.group_id)
     os.setgid(int(opts.group_id))
     os.setuid(int(opts.user_id))
