@@ -102,8 +102,6 @@ class ScriptRunner:
         """
         self.opts = opts
         self.scriptname = 'script'
-        self.useIM = cmd_exists('convert')
-        self.useGS = cmd_exists('gs')
         self.temp_warned = False  # we want only one warning if $TMP not set
         self.treatbashSpecial = treatbashSpecial
         self.image_tag = image_tag
