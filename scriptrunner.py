@@ -25,8 +25,7 @@ html_escape_table = {
 
 
 def timenow():
-    """return current time as a string
-    """
+    """Return current time as a string."""
     return time.strftime('%d/%m/%Y %H:%M:%S', time.localtime(time.time()))
 
 
@@ -76,7 +75,6 @@ def switch_to_docker(opts):
     binds = construct_bind(binds=binds, host_path=toolfactory_path)
     volumes = list(binds.keys())
     sys.argv = [abspath(opts.output_dir) if sys.argv[i - 1] == '--output_dir' else arg for i, arg in enumerate(sys.argv)]  # inject absolute path of working_dir
-    print(sys.argv)
     cmd = ['python', '-u'] + sys.argv + ['--dockerized', '1', "--user_id", str(user_id), "--group_id", str(group_id)]
     image_exists = [True for image in docker_client.images() if opts.docker_image in image['RepoTags']]
     if not image_exists:
@@ -87,10 +85,11 @@ def switch_to_docker(opts):
         command=cmd,
         host_config=docker_client.create_host_config(binds=binds))
     docker_client.start(container=container[u'Id'])
-    docker_client.wait(container=container[u'Id'])
+    exit_code = docker_client.wait(container=container[u'Id'])['StatusCode']
     logs = docker_client.logs(container=container[u'Id'])
-    print(logs)
+    print(logs, end="", file=sys.stderr)
     docker_client.remove_container(container[u'Id'])
+    return exit_code
 
 
 class ScriptRunner:
@@ -409,8 +408,8 @@ def main():
         except Exception:
             pass
     if opts.dockerized == 0:
-        switch_to_docker(opts)
-        return
+        retcode = switch_to_docker(opts)
+        sys.exit(retcode)
     change_user_id(opts.user_id, opts.group_id)
     os.setgid(int(opts.group_id))
     os.setuid(int(opts.user_id))

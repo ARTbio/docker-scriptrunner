@@ -6,7 +6,7 @@
    <requirements>
       <requirement type="package" version="3.4.1">docker-py</requirement>
   </requirements>
-  <command>
+  <command detect_errors="exit_code">
 python '$__tool_directory__/scriptrunner.py'
 --script_path '$runme'
 --interpreter '$interpreter'
