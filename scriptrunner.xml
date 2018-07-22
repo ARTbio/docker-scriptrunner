@@ -1,40 +1,40 @@
-<tool id="docker_scriptrunner" name="docker scriptrunner" version="0.1.6">
+<tool id="docker_scriptrunner" name="docker scriptrunner" version="0.1.7">
   <description>Runs scripts using docker</description>
   <macros>
     <import>macros.xml</import>
   </macros>
    <requirements>
-      <requirement type="package" version="1.8.1">docker-py</requirement>
+      <requirement type="package" version="3.4.1">docker-py</requirement>
   </requirements>
-  <command>
-    python "$__tool_directory__/scriptrunner.py"
-    --script_path "$runme"
-    --interpreter "$interpreter"
-    --user_email "$__user_email__"
-    #if $generate_simple_output.make_file=="yes":
-       --output_file "$output_file"
-    #end if
-    #if $make_HTML.value=="yes":
-      --output_dir "$html_file.files_path" --output_html "$html_file" --make_HTML "yes"
-    #else:
-       --output_dir "."
-    #end if
-    #if $additional_parameters != 'None':
-      #for i in $additional_parameters:
-	--additional_parameters
-        "$i.param_name, $i.param_value"
-      #end for
-    #end if
-    #if $input_files != 'None':
-       --input_file
-	#for i in $input_files:
-	  $i.input
-	#end for
-        #for i in $input_files:
-          --input_format "Any"
-        #end for
-    #end if
-    --docker_image "$docker_image" 
+  <command detect_errors="exit_code">
+python '$__tool_directory__/scriptrunner.py'
+--script_path '$runme'
+--interpreter '$interpreter'
+--user_email '$__user_email__'
+#if $generate_simple_output.make_file=="yes":
+   --output_file "$output_file"
+#end if
+#if $make_HTML.value=="yes":
+  --output_dir "$html_file.files_path" --output_html "$html_file" --make_HTML "yes"
+#else:
+   --output_dir "."
+#end if
+#if $additional_parameters != 'None':
+  #for i in $additional_parameters:
+    --additional_parameters
+    "$i.param_name, $i.param_value"
+  #end for
+#end if
+#if $input_files != 'None':
+   --input_file
+   #for i in $input_files:
+     $i.input
+   #end for
+   #for i in $input_files:
+     --input_format "Any"
+   #end for
+#end if
+--docker_image "$docker_image" 
   </command>
 <configfiles>
   <configfile name="runme">$dynScript</configfile>
@@ -89,7 +89,7 @@
         <options from_data_table="docker_scriptrunner_images"/>
     </param>
     <param name="dynScript" label="Copy and paste the script to be executed here" type="text" value="" area="True" size="8x120"  
-      help="Script must deal with two command line parameters: Path to input tabular file path (or 'None' if none selected) and path to output tabular history file (or 'None').">
+      help="Script must deal with two command line parameters: Path to input file path (or 'None' if none selected) and path to output tabular history file (or 'None').">
       <sanitizer>
          <valid initial="string.printable">
          </valid>
@@ -118,7 +118,7 @@
         <param name="out_format" value="tabular"/>
         <param name="interpreter" value="python"/>
         <param name="runme" value="tf2_test_runme.py"/>
-        <output name="output_file" file="tf2_test_out.xls"/>
+        <output name="output_file" file="tf2_test_out.xls" compare="diff" lines_diff="10"/>
         <output name="html_file" file="tf2_test.html" compare="diff" lines_diff="10"/>
     </test>
 </tests>
