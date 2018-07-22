@@ -5,7 +5,6 @@
   </macros>
    <requirements>
       <requirement type="package" version="3.4.1">docker-py</requirement>
-      <requirement type="package" version="9.22">ghostscript</requirement>
   </requirements>
   <command detect_errors="exit_code">
 python '$__tool_directory__/scriptrunner.py'

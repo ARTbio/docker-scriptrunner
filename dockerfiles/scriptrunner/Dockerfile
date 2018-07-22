@@ -26,8 +26,8 @@ ENV CONDA_PREFIX="/home/galaxy/conda" \
 
 RUN curl https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -L -o miniconda.sh 
 RUN bash miniconda.sh -b -p "$CONDA_PREFIX" && rm miniconda.sh
-RUN bash -c "conda create -y -q -c bioconda --name default samtools==0.1.19 bcftools && \
-    conda config --add channels r && \
+RUN bash -c "conda create -y -q -c bioconda --name default samtools bcftools && \
+    conda config --add channels conda-forge && \
     conda config --add channels bioconda && \
     conda config --add channels iuc && \
     . activate default && \
