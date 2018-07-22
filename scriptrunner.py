@@ -155,7 +155,7 @@ class ScriptRunner:
         our_env = os.environ.copy()
         our_tmp = our_env.get('TMP', None)
         if not our_tmp:
-            out_env['TMP'] = tempfile.gettempdir()
+            our_env['TMP'] = tempfile.gettempdir()
         outpdf = '%s_compressed' % inpdf
         cl = ["gs", "-sDEVICE=pdfwrite", "-dNOPAUSE", "-dUseCIEColor", "-dBATCH", "-dPDFSETTINGS=/printer", "-sOutputFile=%s" % outpdf, inpdf]
         x = subprocess.Popen(cl, stdout=sto, stderr=sto, cwd=self.opts.output_dir, env=our_env)
@@ -207,7 +207,7 @@ class ScriptRunner:
         </head>
         <body>
         <div class="toolFormBody">
-        """
+"""
         galhtmlpostfix = """</div></body></html>\n"""
 
         flist = os.listdir(self.opts.output_dir)
