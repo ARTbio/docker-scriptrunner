@@ -102,7 +102,6 @@ class ScriptRunner:
         """
         self.opts = opts
         self.scriptname = 'script'
-        self.temp_warned = False  # we want only one warning if $TMP not set
         self.treatbashSpecial = treatbashSpecial
         self.image_tag = image_tag
         os.chdir(abspath(opts.output_dir))
@@ -147,9 +146,8 @@ class ScriptRunner:
         self.test1HTML = '%s_test1_output.html' % self.scriptname
 
     def compressPDF(self, inpdf=None, thumbformat='png'):
-        """need absolute path to pdf
-           note that GS gets confoozled if no $TMP or $TEMP
-           so we set it
+        """
+        inpdf is absolute path to PDF
         """
         assert os.path.isfile(inpdf), "## Input %s supplied to %s compressPDF not found" % (inpdf, self.myName)
         hlog = os.path.join(self.opts.output_dir, "compress_%s.txt" % os.path.basename(inpdf))
@@ -157,17 +155,7 @@ class ScriptRunner:
         our_env = os.environ.copy()
         our_tmp = our_env.get('TMP', None)
         if not our_tmp:
-            our_tmp = our_env.get('TEMP', None)
-        if not (our_tmp and os.path.exists(our_tmp)):
-            newtmp = os.path.join(self.opts.output_dir, 'tmp')
-            try:
-                os.mkdir(newtmp)
-            except Exception:
-                sto.write('## WARNING - cannot make %s - it may exist or permissions need fixing\n' % newtmp)
-            our_env['TEMP'] = newtmp
-            if not self.temp_warned:
-                sto.write('## WARNING - no $TMP or $TEMP!!! Please fix - using %s temporarily\n' % newtmp)
-                self.temp_warned = True
+            out_env['TMP'] = tempfile.gettempdir()
         outpdf = '%s_compressed' % inpdf
         cl = ["gs", "-sDEVICE=pdfwrite", "-dNOPAUSE", "-dUseCIEColor", "-dBATCH", "-dPDFSETTINGS=/printer", "-sOutputFile=%s" % outpdf, inpdf]
         x = subprocess.Popen(cl, stdout=sto, stderr=sto, cwd=self.opts.output_dir, env=our_env)
